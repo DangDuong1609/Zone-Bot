@@ -1,0 +1,35 @@
+{
+  "name": "zone-bot",
+  "version": "1.0.0",
+  "description": "A Discord bot built with discord.py",
+  "main": "index.js",
+  "scripts": {
+    "start": "node .",
+    "test": "https://github.com/DangDuong1609/Zone-Bot"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DangDuong1609/Zzônene-Bot.git"
+  },
+  "keywords": [
+    "zône",
+    "zône-bot"
+  ],
+  "author": "yanffeii",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DangDuong1609/Zzônene-Bot/issues"
+  },
+  "type": "module",
+  "homepage": "https://github.com/DangDuong1609/Zzônene-Bot#readme",
+  "dependencies": {
+    "@discord-player/extractor": "^7.1.0",
+    "@distube/ytdl-core": "^4.16.4",
+    "discord-player": "^7.1.0",
+    "discord.js": "^14.18.0",
+    "dotenv": "^16.4.7",
+    "ffmpeg-static": "^5.2.0",
+    "mediaplex": "^1.0.0",
+    "opusscript": "^0.1.1"
+  }
+}
