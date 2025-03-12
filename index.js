@@ -1,6 +1,10 @@
 ﻿const { Client, Events, GatewayIntentBits, Collection } = require('discord.js');
 const fs = require("node:fs");
 const path = require('node:path');
+const { Player } = require('discord-player');
+const { YouTubeExtractor, SoundCloudExtractor, DefaultExtractors } = require("@discord-player/extractor");
+const ffmpeg = require('ffmpeg-static');
+process.env.FFMPEG_PATH = ffmpeg;
 
 require("dotenv").config();
 
@@ -17,13 +21,41 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.MessageContent,
+	GatewayIntentBits.GuildVoiceStates
   ]
 });
 
+// ✅ Initialize Player first
+const player = new Player(client);
+player.setMaxListeners(100);
+
+(async () => {
+    console.log("Loading default extractors...");
+    await player.extractors.loadMulti(DefaultExtractors);
+    console.log("Default extractors loaded.");
+
+    if (YouTubeExtractor) {
+        console.log("Registering YouTubeExtractor...");
+        await player.extractors.register(YouTubeExtractor);
+        console.log("YouTubeExtractor registered.");
+    } else {
+        console.error("YouTubeExtractor is undefined!");
+    }
+
+    if (SoundCloudExtractor) {
+        console.log("Registering SoundCloudExtractor...");
+        await player.extractors.register(SoundCloudExtractor);
+        console.log("SoundCloudExtractor registered.");
+    } else {
+        console.error("SoundCloudExtractor is undefined!");
+    }
+})();
+
+
 client.once(Events.ClientReady, async readyClient => {
 	const deploy = await require('./deploy')(readyClient);
-    console.log(deploy);
+    // console.log(deploy);
 })
 
 //Client variables to use everywhere
@@ -32,27 +64,45 @@ client.commands = new Collection();
 client.aliases = new Collection();
 client.cooldowns = new Collection();
 
+client.functions = new Collection();
+
 //Loading files, with the client variable like Command Handler, Event Handler, ...
 ["command", "events"].forEach(handler => {
     require(`./handlers/${handler}`)(client);
 });
 
-client.commands = new Collection();
-
-const foldersPath = path.join(__dirname, 'commands');
-const commandFolders = fs.readdirSync(foldersPath);
+const commandsPath = path.join(__dirname, 'commands');
+const commandFolders = fs.readdirSync(commandsPath);
 
 for (const folder of commandFolders) {
-	const commandsPath = path.join(foldersPath, folder);
-	const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+	const commandPath = path.join(commandsPath, folder);
+	const commandFiles = fs.readdirSync(commandPath).filter(file => file.endsWith('.js'));
 	for (const file of commandFiles) {
-		const filePath = path.join(commandsPath, file);
+		const filePath = path.join(commandPath, file);
 		const command = require(filePath);
 		// Set a new item in the Collection with the key as the command name and the value as the exported module
 		if ('data' in command && 'execute' in command) {
 			client.commands.set(command.data.name, command);
 		} else {
 			console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+		}
+	}
+}
+
+const functionsPath = path.join(__dirname, 'functions');
+const functionsFolders = fs.readdirSync(functionsPath);
+
+for (const folder of functionsFolders) {
+	const functionPath = path.join(functionsPath, folder);
+	const functionFiles = fs.readdirSync(functionPath).filter(file => file.endsWith('.js'));
+	for (const file of functionFiles) {
+		const filePath = path.join(functionPath, file);
+		const functions = require(filePath);
+		// Set a new item in the Collection with the key as the function name and the value as the exported module
+		if ('name' in functions && 'execute' in functions) {
+			client.functions.set(functions.name, functions);
+		} else {
+			console.log(`[WARNING] The function at ${filePath} is missing a required "name" or "execute" property.`);
 		}
 	}
 }
@@ -77,6 +127,26 @@ client.on(Events.InteractionCreate, async interaction => {
 		}
 	}
 });
+
+const eventsPath = path.join(__dirname, 'events');
+const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+
+for (const file of eventFiles) {
+	const filePath = path.join(eventsPath, file);
+	// const event = await import(pathToFileURL(filePath.replace(/\\/g, '/')));
+	const event = require(filePath);
+	client.on(event.name, (...args) => event.execute(...args));
+}
+
+const playerEventsPath = path.join(__dirname, 'player');
+const playerEventFiles = fs.readdirSync(playerEventsPath).filter(file => file.endsWith('.js'));
+
+for (const file of playerEventFiles) {
+	const playerPath = path.join(playerEventsPath, file);
+	// const event = await import(pathToFileURL(filePath.replace(/\\/g, '/')));
+	const event = require(playerPath);
+	player.events.on(event.name, (...args) => event.execute(client, ...args));
+}
 
 //login into the bot
 // client.login(require("./botconfig/config.json").token);
