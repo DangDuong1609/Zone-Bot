@@ -80,6 +80,6 @@ client.on(Events.InteractionCreate, async interaction => {
 
 //login into the bot
 // client.login(require("./botconfig/config.json").token);
-client.login(process.env.BOT_TOKEN);
+client.login(process.env.DISCORD_BOT_TOKEN);
 
 /** Template by Tomato#6966 | https://github.com/Tomato6966/Discord-Js-Handler-Template */

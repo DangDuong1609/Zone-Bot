@@ -26,7 +26,7 @@ module.exports = async (client) => {
     }
 
     // Construct and prepare an instance of the REST module
-    const rest = new REST().setToken(process.env.BOT_TOKEN);
+    const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
 
     // and deploy your commands!
     try {
