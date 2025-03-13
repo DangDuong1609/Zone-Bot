@@ -1,35 +1,29 @@
 {
-  "name": "zone-bot",
+  "name": "discord-js-handler-template",
   "version": "1.0.0",
-  "description": "A Discord bot built with discord.py",
+  "description": "Discord.js Command and Event Handler Template with example Command usages!",
   "main": "index.js",
   "scripts": {
-    "start": "node .",
-    "test": "https://github.com/DangDuong1609/Zone-Bot"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node --trace-warnings ."
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/DangDuong1609/Zzônene-Bot.git"
-  },
-  "keywords": [
-    "zône",
-    "zône-bot"
-  ],
-  "author": "yanffeii",
+  "author": "Tomato#6966 (author of this template)",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/DangDuong1609/Zzônene-Bot/issues"
-  },
-  "type": "module",
-  "homepage": "https://github.com/DangDuong1609/Zzônene-Bot#readme",
   "dependencies": {
     "@discord-player/extractor": "^7.1.0",
-    "@distube/ytdl-core": "^4.16.4",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "ascii-table": "0.0.9",
     "discord-player": "^7.1.0",
+    "discord-player-youtubei": "^1.4.2",
     "discord.js": "^14.18.0",
     "dotenv": "^16.4.7",
     "ffmpeg-static": "^5.2.0",
-    "mediaplex": "^1.0.0",
-    "opusscript": "^0.1.1"
+    "play-dl": "^1.9.7",
+    "punycode": "^2.3.1"
+  },
+  "type": "commonjs",
+  "devDependencies": {
+    "ascii-table": "0.0.9",
+    "colors": "^1.4.0"
   }
 }
