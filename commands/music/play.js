@@ -6,7 +6,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('play')
         .setDescription('Phát nhạc')
-        .addStringOption(option =>  // ✅ Fixed: addStringOption instead of addUserOption
+        .addStringOption(option =>
             option
                 .setName('query')
                 .setDescription('Tên nhạc')
@@ -18,15 +18,14 @@ module.exports = {
     async execute(interaction) {
         const query = interaction.options.getString('query');
         const voiceChannel = interaction.member.voice.channel;
-        if (!voiceChannel) return interaction.reply('Vui lòng tham gia vào kênh thoại trước!');
+        if (!voiceChannel) return interaction.reply('❌ Vui lòng tham gia vào kênh thoại trước!');
 
         const voiceMe = interaction.guild.members.cache.get(interaction.client.user.id)?.voice.channel;
-        if (voiceMe && voiceMe.id !== voiceChannel.id) return interaction.reply('Vui lòng tham gia vào kênh thoại cùng với tôi!');
+        if (voiceMe && voiceMe.id !== voiceChannel.id) return interaction.reply('❌ Vui lòng tham gia vào kênh thoại cùng với tôi!');
 
-        // const reply = await interaction.fetchReply();
-        await interaction.reply(`Now playing: ${query}`);
+        await interaction.reply(`🔎 Đang tìm bài hát: **${query}**...`);
 
-        const queue = useQueue(interaction.guild.id); // ✅ Fixed: useQueue instead of useMainPlayer
+        const queue = useQueue(interaction.guild.id);
 
         try {
             const res = await player.play(voiceChannel, query, {
@@ -45,20 +44,19 @@ module.exports = {
                 }
             });
 
-            // Ensure the track has a duration
-            if (!res.track.duration) {
-                res.track.duration = 'Không xác định';
+            // Đảm bảo track có thông tin duration hợp lệ
+            const duration = res.track.duration || 'Không xác định';
+            
+            if (queue && queue.metadata) {
+                return interaction.deleteReply().catch(() => {});
             }
-
-            if (queue?.metadata) return interaction.deleteReply().catch(e => { });
-            await interaction.editReply(`Đã thêm bài hát: ${res.track.title}`);
-
+            await interaction.editReply(`✅ Đã thêm vào danh sách phát: **${res.track.title}** (${duration})`);
         } catch (error) {
-            if (error.code === 'ERR_NO_RESULT') {
-                return interaction.editReply('❌ Không tìm thấy bài hát nào. Hãy thử một từ khóa khác.');
-            }
             console.error(error);
-            return interaction.editReply('❌ Đã xảy ra lỗi khi phát nhạc.');
+            const errorMessage = error.code === 'ERR_NO_RESULT' 
+                ? '❌ Không tìm thấy bài hát nào. Hãy thử một từ khóa khác.'
+                : `❌ Đã xảy ra lỗi: ${error.message}`;
+            return interaction.editReply(errorMessage);
         }
     },
 };

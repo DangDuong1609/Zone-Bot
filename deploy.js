@@ -30,14 +30,14 @@ module.exports = async (client) => {
 
     // and deploy your commands!
     try {
-        console.log(`Started refreshing ${commands.length} application [/] commands.`);
+        // console.log(`Started refreshing ${commands.length} application [/] commands.`);
 
         const data = await rest.put(
             Routes.applicationCommands(client.user.id),
             { body: commands },
         );
 
-        console.log(`Successfully reloaded ${data.length} application [/] commands.`);
+        // console.log(`Successfully reloaded ${data.length} application [/] commands.`);
         return data;
     } catch (error) {
         // And of course, make sure you catch and log any errors!
