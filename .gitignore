@@ -142,3 +142,6 @@ yarn.lock
 
 # botconfig
 botconfig/config.json
+play_autocomplete.txt
+player.txt
+playerStart.txt
