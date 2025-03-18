@@ -1,5 +1,4 @@
 const { Events, MessageFlags, PermissionsBitField } = require('discord.js');
-const config = require('../config.json');
 
 module.exports.name = Events.InteractionCreate;
 module.exports = {
@@ -30,7 +29,7 @@ module.exports = {
                 }
             }
         } else if (interaction.isAutocomplete()) {
-            const command = interaction.client.commands.get(interaction.commandName);
+            const command = interaction.client.functions.get(interaction.commandName);
 
             if (!command || !command.autocomplete) {
                 console.error(`❌ Không tìm thấy autocomplete cho lệnh: ${interaction.commandName}`);
