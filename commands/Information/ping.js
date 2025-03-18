@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -7,6 +7,7 @@ module.exports = {
 
     async execute(interaction) {
         const ping = Math.round(interaction.client.ws.ping);
-        await interaction.reply({ content: `🏓 Pong! Latency is **${ping}ms**.`, ephemeral: false });
+        // await interaction.reply({ content: `🏓 Pong! Latency is **${ping}ms**.`, ephemeral: MessageFlags.Ephemeral });
+        await interaction.reply({ content: `🏓 Pong! Latency is **${ping}ms**.` });
     },
 };

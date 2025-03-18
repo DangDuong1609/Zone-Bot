@@ -25,6 +25,7 @@ module.exports = {
 
         await interaction.reply(`🔎 Đang tìm bài hát: **${query}**...`);
 
+        // await interaction.deferReply({ fetchReply: true });
         const queue = useQueue(interaction.guild.id);
 
         try {
@@ -40,6 +41,7 @@ module.exports = {
                         channel: interaction.channel,
                         requestedBy: interaction.user,
                         interaction: interaction
+                        // mess: await interaction.fetchReply()
                     }
                 }
             });
@@ -47,6 +49,7 @@ module.exports = {
             // Đảm bảo track có thông tin duration hợp lệ
             const duration = res.track.duration || 'Không xác định';
             
+            // if (queue && queue?.metadata) return interaction.deleteReply().catch(e => { });
             if (queue && queue.metadata) {
                 return interaction.deleteReply().catch(() => {});
             }
