@@ -1,6 +1,14 @@
-//here the event starts
-module.exports = client => {
-    console.error();
-}
+const { useLogger } = require("@zibot/zihooks");
+const { Events } = require("discord.js");
 
-/** Template by Tomato#6966 | https://github.com/Tomato6966/Discord-Js-Handler-Template */
+module.exports = {
+	name: Events.Error,
+	type: "events",
+	/**
+	 *
+	 * @param { Error } error
+	 */
+	execute: async (error) => {
+		useLogger().error(error.message);
+	},
+};
