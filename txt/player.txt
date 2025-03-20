@@ -1,0 +1,141 @@
+// const { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
+
+// const emoji = {
+//     volume: '🔊',
+//     previous: '⏮️',
+//     pause: '⏸️',
+//     play: '▶️',
+//     next: '⏭️',
+//     loop: '🔂',
+//     search: '🔍',
+//     locks: '🔒',
+//     unlocks: '🔓',
+//     stop: '⏹️',
+//     shuffle: '🔀',
+//     refresh: '🔄'
+// }
+
+// const CreateButton = ({ id = null, label = null, style = ButtonStyle.Secondary, emoji = null, disabled = true }) => {
+//     const button = new ButtonBuilder()
+//         .setCustomId(`player_${id}`)
+//         .setStyle(style)
+//         .setDisabled(disabled);
+//     if (label) button.setLabel(label);
+//     if (emoji) button.setEmoji(emoji);
+//     return button;
+// }
+
+// const repeatMode = ["OFF", "TRACK", "QUEUE", "AUTOPLAY"]
+
+// module.exports = {
+//     data: {
+//         name: 'player',
+//         type: 'player'
+//     },
+//     execute: async (client, queue, tracks) => {
+//         const track = tracks ?? queue.currentTrack;
+//         const requestedBy = tracks?.requestedBy ?? queue.metadata.requestedBy;
+//         let code = {};
+
+//         const process = queue.node.createProgressBar({
+//             // format: '▬',
+//             // progress: '▬',
+//             // timecodes: true
+//         });
+
+//         const embed = new EmbedBuilder()
+//             .setColor(0x3d8f58)
+//             .setTitle('🎵 Đã thêm vào hàng đợi')
+//             .setDescription(`**[${track.title}](${track.url})**`)
+//             .setTimestamp()
+//             .setImage(track.thumbnail)
+//             .addFields({
+//                     name: `${process}`,
+//                     value: " ",
+//                 })
+//             .setFooter({
+//                 text: `Yêu cầu bởi ${requestedBy.username || "Ẩn danh"}`,
+//                 iconURL: requestedBy.displayAvatarURL({ size: 1024 })
+//             });
+
+//         if ( queue.repeatMode !== 0 ) {
+//             embed.addFields({
+//                 name: `Lập lại: ${repeatMode[queue.repeatMode]}`,
+//                 value: " ",
+//                 inline: false
+//             });
+//         }
+
+//         code.embeds = [embed];
+
+//         if (queue.node.isPlaying() || !queue.isEmpty()) {
+//             const button_001 = new ActionRowBuilder().addComponents(
+//                 CreateButton({
+//                     id: 'volume',
+//                     // emoji: '🔊',
+//                     emoji: `${emoji.volume}`,
+//                     disabled: false
+//                 }),
+//                 CreateButton({
+//                     id: 'previous',
+//                     // emoji: '⏮',
+//                     label: `${emoji.previous}`,
+//                     disabled: !queue?.history?.previousTrack
+//                 }),
+//                 CreateButton({
+//                     id: 'pause',
+//                     // emoji: `${queue.node.isPlaying() ? '⏸️' : '▶️'}`,
+//                     label: `${queue.node.isPlaying() ? `${emoji.pause}` : `${emoji.play}`}`,
+//                     // disabled: !queue?.history?.isPaused
+//                     disabled: false
+//                 }),
+//                 CreateButton({
+//                     id: 'next',
+//                     // emoji: '⏭️',
+//                     label: `${emoji.next}`,
+//                     disabled: false
+//                 }),
+//                 CreateButton({
+//                     id: 'loop',
+//                     // emoji: '🔂',
+//                     label: `${emoji.loop}`,
+//                     disabled: false
+//                 })
+//             );
+            
+//             const button_002 = new ActionRowBuilder().addComponents(
+//                 CreateButton({
+//                     id: 'refresh',
+//                     emoji: `${emoji.refresh}`,
+//                     disabled: false
+//                 }),
+//                 CreateButton({
+//                     id: 'shuffle',
+//                     emoji: `${emoji.shuffle}`,
+//                     disabled: true
+//                 }),
+//                 CreateButton({
+//                     id: 'search',
+//                     // emoji: '🔍',
+//                     emoji: `${emoji.search}`,
+//                     disabled: false
+//                 }),
+//                 CreateButton({
+//                     id: 'locks',
+//                     // emoji: '🔒',
+//                     emoji: `${emoji.locks}`,
+//                     disabled: false
+//                 }),
+//                 CreateButton({
+//                     id: 'stop',
+//                     style: ButtonStyle.Danger,
+//                     // emoji: '⏹️',
+//                     emoji: `${emoji.stop}`,
+//                     disabled: false
+//                 })
+//             );
+//             code.components = [button_001, button_002];
+//         }
+//         return code;
+//     },
+// };

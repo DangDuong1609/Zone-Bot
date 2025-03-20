@@ -1,30 +1,63 @@
-//here the event starts
-const config = require("../../botconfig/config.json")
-module.exports = client => {
-  try{
-    const stringlength = 69;
-    console.log("\n")
-    console.log(`     ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓`.bold.brightGreen)
-    console.log(`     ┃ `.bold.brightGreen + " ".repeat(-1+stringlength-` ┃ `.length)+ "┃".bold.brightGreen)
-    console.log(`     ┃ `.bold.brightGreen + `Discord Bot is online!`.bold.brightGreen + " ".repeat(-1+stringlength-` ┃ `.length-`Discord Bot is online!`.length)+ "┃".bold.brightGreen)
-    console.log(`     ┃ `.bold.brightGreen + ` /--/ ${client.user.tag} /--/ `.bold.brightGreen+ " ".repeat(-1+stringlength-` ┃ `.length-` /--/ ${client.user.tag} /--/ `.length)+ "┃".bold.brightGreen)
-    console.log(`     ┃ `.bold.brightGreen + " ".repeat(-1+stringlength-` ┃ `.length)+ "┃".bold.brightGreen)
-    console.log(`     ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛`.bold.brightGreen)
-  }catch{ /* */ }
+const { Events, Client, ActivityType } = require("discord.js");
+const config = require("../../config");
+const deploy = require("../../startup/deploy");
+const mongoose = require("mongoose");
+const { useDB, useLogger } = require("@zibot/zihooks");
 
-  try{
-    client.user.setActivity(client.user.username, { type: "PLAYING" });
-  }catch (e) {
-      console.log(String(e.stack).red);
-  }
-  //Change status each 10 minutes
-  setInterval(()=>{
-    try{
-      client.user.setActivity(client.user.username, { type: "PLAYING" });
-    }catch (e) {
-        console.log(String(e.stack).red);
-    }
-  }, 10*60*1000)
-}
+module.exports = {
+	name: Events.ClientReady,
+	type: "events",
+	once: true,
+	/**
+	 * @param { Client } client
+	 */
+	execute: async (client) => {
+		/**
+		 * @param { String } messenger
+		 */
+		client.errorLog = async (messenger) => {
+			if (!config?.botConfig?.ErrorLog) return;
+			try {
+				const channel = await client.channels.fetch(config?.botConfig?.ErrorLog).catch(() => null);
+				if (channel) {
+					const text = `[<t:${Math.floor(Date.now() / 1000)}:R>] ${messenger}`;
+					for (let i = 0; i < text.length; i += 1000) {
+						await channel.send(text.slice(i, i + 1000)).catch(() => {});
+					}
+				}
+			} catch (error) {
+				useLogger().error("Lỗi khi gửi tin nhắn lỗi:", error);
+			}
+		};
 
-/** Template by Tomato#6966 | https://github.com/Tomato6966/Discord-Js-Handler-Template */
+		// Use Promise.all to handle MongoDB connection and deployment concurrently
+		const [deployResult, mongoConnected] = await Promise.all([
+			config?.deploy ? deploy(client).catch(() => null) : null,
+			mongoose.connect(process.env.MONGO).catch(() => false),
+		]);
+
+		if (mongoConnected) {
+			useDB(require("../../startup/mongoDB"));
+			await require("../../startup/loadResponder")();
+			await require("../../startup/loadWelcome")();
+			useLogger().info("Connected to MongoDB!");
+			client.errorLog("Connected to MongoDB!");
+		} else {
+			useLogger().error("Failed to connect to MongoDB!");
+			client.errorLog("Failed to connect to MongoDB!");
+		}
+
+		// Set Activity status
+		client.user.setStatus(config?.botConfig?.Status || "online");
+		client.user.setActivity({
+			name: config?.botConfig?.ActivityName || "ziji",
+			type: ActivityType[config?.botConfig?.ActivityType] || ActivityType.Playing,
+			timestamps: {
+				start: Date.now(),
+			},
+		});
+
+		useLogger().info(`Ready! Logged in as ${client.user.tag}`);
+		client.errorLog(`Ready! Logged in as ${client.user.tag}`);
+	},
+};

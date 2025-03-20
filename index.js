@@ -1,164 +1,193 @@
-﻿const { Client, Events, GatewayIntentBits, Collection } = require('discord.js');
-const fs = require("node:fs");
-const path = require('node:path');
-const { Player } = require('discord-player');
-const { DefaultExtractors } = require("@discord-player/extractor");
-const { YoutubeiExtractor } = require("discord-player-youtubei");
-const ffmpeg = require('ffmpeg-static');
-process.env.FFMPEG_PATH = ffmpeg;
-
 require("dotenv").config();
-
-// Creating the Discord.js Client for This Bot
+const { startServer } = require("./web");
+const {
+	useAI,
+	useClient,
+	useCooldowns,
+	useCommands,
+	useFunctions,
+	useGiveaways,
+	useConfig,
+	useResponder,
+	useWelcome,
+	useLogger,
+} = require("@zibot/zihooks");
+const path = require("node:path");
+const winston = require("winston");
+const util = require("util");
+const { Player } = require("discord-player");
+const config = useConfig(require("./config"));
+const { GiveawaysManager } = require("discord-giveaways");
+const { YoutubeiExtractor } = require("discord-player-youtubei");
+const { loadFiles, loadEvents } = require("./startup/loader.js");
+const { Client, Collection, GatewayIntentBits, Partials } = require("discord.js");
+const { ZiExtractor, useZiVoiceExtractor, TextToSpeech } = require("@zibot/ziextractor");
+const { DefaultExtractors } = require("@discord-player/extractor");
+const readline = require("readline");
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildVoiceStates
-    ]
+	rest: [{ timeout: 60_000 }],
+	intents: [
+		GatewayIntentBits.Guilds, // for guild related things
+		GatewayIntentBits.GuildVoiceStates, // for voice related things
+		GatewayIntentBits.GuildMessageReactions, // for message reactions things
+		GatewayIntentBits.GuildMembers, // for guild members related things
+		// GatewayIntentBits.GuildEmojisAndStickers, // for manage emojis and stickers
+		// GatewayIntentBits.GuildIntegrations, // for discord Integrations
+		// GatewayIntentBits.GuildWebhooks, // for discord webhooks
+		GatewayIntentBits.GuildInvites, // for guild invite managing
+		// GatewayIntentBits.GuildPresences, // for user presence things
+		GatewayIntentBits.GuildMessages, // for guild messages things
+		// GatewayIntentBits.GuildMessageTyping, // for message typing things
+		GatewayIntentBits.DirectMessages, // for dm messages
+		GatewayIntentBits.DirectMessageReactions, // for dm message reaction
+		// GatewayIntentBits.DirectMessageTyping, // for dm message typinh
+		GatewayIntentBits.MessageContent, // enable if you need message content things
+	],
+	partials: [Partials.User, Partials.GuildMember, Partials.Message, Partials.Channel],
+	allowedMentions: {
+		parse: ["users"],
+		repliedUser: false,
+	},
 });
 
-// ✅ Initialize Player first
-const player = new Player(client);
+// Configure logger
+const logger = useLogger(
+	winston.createLogger({
+		level: config.DevConfig?.logger || "info",
+		format: winston.format.combine(
+			winston.format.timestamp(),
+			winston.format.printf(
+				({ level, message, timestamp }) =>
+					`[${timestamp}] [${level.toUpperCase()}]:` + util.inspect(message, { showHidden: false, depth: 2, colors: true }),
+			),
+		),
+		transports: [
+			new winston.transports.Console({
+				format: winston.format.printf(
+					({ level, message }) =>
+						`[${level.toUpperCase()}]:` + util.inspect(message, { showHidden: false, depth: 2, colors: true }),
+				),
+			}),
+			new winston.transports.File({ filename: "bot.log" }),
+		],
+	}),
+);
+
+if (config.DevConfig.ai && process.env?.GEMINI_API_KEY?.length) {
+	const { GoogleGenerativeAI } = require("@google/generative-ai");
+	const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+	useAI({
+		client,
+		genAI,
+		run: async (prompt) => {
+			const generationConfig = {
+				stopSequences: ["red"],
+				temperature: 0.9,
+				topP: 0.1,
+				topK: 16,
+			};
+			const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", generationConfig });
+			const result = await model.generateContent(prompt, {});
+			const response = await result.response;
+			const text = response.text();
+			return text;
+		},
+	});
+}
+
+const player = new Player(client, {
+	skipFFmpeg: false,
+});
+
 player.setMaxListeners(100);
+if (config.DevConfig.YoutubeiExtractor) {
+	player.extractors.register(YoutubeiExtractor, {});
+	require("youtubei.js").Log.setLevel(0);
+}
 
-(async () => {
-    await player.extractors.loadMulti(DefaultExtractors);
+if (config.DevConfig.ZiExtractor) player.extractors.register(ZiExtractor, {});
 
-    if (YoutubeiExtractor) {
-        console.log("Registering YoutubeiExtractor...");
-        await player.extractors.register(YoutubeiExtractor, {});
-        console.log("YoutubeiExtractor registered.");
-    } else {
-        console.error("YoutubeiExtractor is undefined!");
-    }
-})();
+player.extractors.register(TextToSpeech, {});
+player.extractors.loadMulti(DefaultExtractors);
 
-
-client.once(Events.ClientReady, async readyClient => {
-    await require('./deploy')(readyClient);
+// Debug
+if (config.DevConfig.DJS_DEBUG) client.on("debug", (m) => logger.debug(m));
+if (config.DevConfig.DPe_DEBUG) player.events.on("debug", (m) => logger.debug(m));
+if (config.DevConfig.DP_DEBUG) {
+	logger.debug(player.scanDeps());
+	player.on("debug", (m) => logger.debug(m));
+}
+const rl = readline.createInterface({
+	input: process.stdin,
+	output: process.stdout,
 });
 
-// Client variables
-client.commands = new Collection();
-client.functions = new Collection();
+// Xử lý các lệnh nhập từ console
+rl.on("line", (input) => {
+	const args = input.trim().split(/ +/);
+	const command = args.shift().toLowerCase();
 
-//Loading files, with the client variable like Command Handler, Event Handler, ...
-// ["command", "events"].forEach(handler => {
-//     require(`./handlers/${handler}`)(client);
-// });
+	switch (command) {
+		case "status":
+			logger.info(`Bot đang ${client.isReady() ? "hoạt động" : "tắt"}`);
+			break;
+		case "stop":
+			logger.info("Đang tắt bot...");
+			client.destroy();
+			process.exit(0);
+			break;
+		case "ping":
+			logger.info(`Pong! Độ trễ của bot là ${client.ws.ping}ms`);
+			break;
+		case "help":
+			logger.info(
+				`Danh sách các lệnh:\n- help: Hiển thị trợ giúp\n- ping: Hiển thị độ trễ bot\n- stop: Tắt bot\n- status: Trả về trạng thái bot`,
+			);
+			break;
+		default:
+			logger.error(`Lệnh không hợp lệ: ${command}`);
+	}
+});
+useGiveaways(
+	config.DevConfig.Giveaway ?
+		new GiveawaysManager(client, {
+			storage: "./jsons/giveaways.json",
+			default: {
+				botsCanWin: false,
+				embedColor: "Random",
+				embedColorEnd: "#000000",
+				reaction: "🎉",
+			},
+		})
+	:	() => false,
+);
 
-// Load commands
-const commandsPath = path.join(__dirname, 'commands');
-const commandFolders = fs.readdirSync(commandsPath);
-
-for (const folder of commandFolders) {
-    const commandfilePath = path.join(commandsPath, folder);
-    const commandFiles = fs.readdirSync(commandfilePath).filter(file => file.endsWith('.js'));
-    for (const file of commandFiles) {
-        const filePath = path.join(commandfilePath, file);
-        const command = require(filePath);
-        if ('data' in command && 'execute' in command) {
-            // console.log('Loaded commands: ', command.data.name);
-            client.commands.set(command.data.name, command);
-        } else {
-            console.warn(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
-        }
-    }
-}
-
-// Load functions
-const functionsPath = path.join(__dirname, 'functions');
-const functionsFolders = fs.readdirSync(functionsPath);
-
-for (const folder of functionsFolders) {
-    const functionsfilePath = path.join(functionsPath, folder);
-    const functionFiles = fs.readdirSync(functionsfilePath).filter(file => file.endsWith('.js'));
-    for (const file of functionFiles) {
-        const filePath = path.join(functionsfilePath, file);
-        const command = require(filePath);
-        if ('data' in command && 'execute' in command) {
-            // console.log('Loaded functions: ', command.data.name);
-            client.functions.set(command.data.name, command);
-        } else {
-            console.log(`[WARNING] The function at ${filePath} is missing a required "data" or "execute" property.`);
-        }
-    }
-}
-
-// Interaction handling
-client.on(Events.InteractionCreate, async interaction => {
-    try {
-        // if (!interaction.isAutocomplete()) return;
-        if (interaction.isAutocomplete()) {
-            const command = client.functions.get(interaction.commandName);
-            if (!command) {
-                console.error(`No command matching ${interaction.commandName} was found.`);
-                return;
-            }
-            if (typeof command.autocomplete !== 'function') {
-                console.error(`Command ${interaction.commandName} does not have a valid autocomplete function.`);
-                return;
-            }
-            await command.autocomplete(interaction);
-            return;
-        }
-
-        if (!interaction.isChatInputCommand()) return;
-        const command = interaction.client.commands.get(interaction.commandName);
-
-        if (!command) {
-            console.error(`No command matching ${interaction.commandName} was found.`);
-            return;
-        }
-
-        try {
-            await command.execute(interaction);
-        } catch (error) {
-            console.error(error);
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp({ content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral });
-            } else {
-                await interaction.reply({ content: 'There was an error while executing this command!', flags: MessageFlags.Ephemeral });
-            }
-        }
-    } catch (error) {
-        console.error(error);
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
-        } else {
-            await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
-        }
-    }
+const ziVoice = useZiVoiceExtractor({
+	ignoreBots: true,
+	minimalVoiceMessageDuration: 1,
+	lang: "vi-VN",
 });
 
-// Load events
-const eventsPath = path.join(__dirname, 'events');
-const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
-for (const file of eventFiles) {
-    const filePath = path.join(eventsPath, file);
-    try {
-        const event = require(filePath);
-        client.on(event.name, (...args) => event.execute(...args));
-    } catch (error) {
-        console.error(`Error loading event ${file}:`, error);
-    }
-}
+const initialize = async () => {
+	useClient(client);
+	useWelcome(new Collection());
+	useCooldowns(new Collection());
+	useResponder(new Collection());
+	await Promise.all([
+		loadEvents(path.join(__dirname, "events/client"), client),
+		loadEvents(path.join(__dirname, "events/voice"), ziVoice),
+		loadEvents(path.join(__dirname, "events/process"), process),
+		loadEvents(path.join(__dirname, "events/player"), player.events),
+		loadFiles(path.join(__dirname, "commands"), useCommands(new Collection())),
+		loadFiles(path.join(__dirname, "functions"), useFunctions(new Collection())),
+		startServer().catch((error) => logger.error("Error start Server:", error)),
+	]);
+	client.login(process.env.TOKEN).catch((error) => {
+		logger.error("Error logging in:", error);
+		logger.error("The Bot Token You Entered Into Your Project Is Incorrect Or Your Bot's INTENTS Are OFF!");
+	});
+};
 
-// Load player events
-const playerEventsPath = path.join(__dirname, 'player');
-const playerEventFiles = fs.readdirSync(playerEventsPath).filter(file => file.endsWith('.js'));
-for (const file of playerEventFiles) {
-    const playerPath = path.join(playerEventsPath, file);
-    try {
-        const event = require(playerPath);
-        player.events.on(event.name, (...args) => event.execute(client, ...args));
-    } catch (error) {
-        console.error(`Error loading player event ${file}:`, error);
-    }
-}
-
-// Login into the bot
-client.login(process.env.DISCORD_BOT_TOKEN);
+initialize().catch((error) => {
+	logger.error("Error during initialization:", error);
+});
